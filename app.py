@@ -44,6 +44,17 @@ MIME_MAP = {
 }
 
 
+def human_file_size(size: int) -> str:
+    value = float(size)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            if unit == "B":
+                return f"{int(value)} {unit}"
+            return f"{value:.2f} {unit}"
+        value /= 1024
+    return f"{size} B"
+
+
 def load_settings() -> dict[str, Any]:
     settings = DEFAULT_SETTINGS.copy()
     if SETTINGS_PATH.exists():
@@ -94,6 +105,58 @@ def apply_page_style() -> None:
             color: #475569;
             font-size: 1rem;
         }
+        .quick-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.7rem;
+            margin-bottom: 1rem;
+        }
+        .quick-item {
+            border: 1px solid rgba(15, 118, 110, 0.14);
+            border-radius: 12px;
+            padding: 0.8rem 0.9rem;
+            background: rgba(255, 255, 255, 0.68);
+        }
+        .quick-item strong {
+            display: block;
+            margin-bottom: 0.18rem;
+            color: #0f172a;
+        }
+        .quick-item span {
+            color: #64748b;
+            font-size: 0.92rem;
+        }
+        .result-panel {
+            border: 1px solid rgba(15, 118, 110, 0.18);
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            margin: 0.8rem 0 0.7rem 0;
+            background: rgba(240, 253, 250, 0.78);
+        }
+        .result-panel strong {
+            display: block;
+            margin-bottom: 0.25rem;
+            color: #0f766e;
+        }
+        .result-panel span {
+            color: #334155;
+            font-size: 0.92rem;
+        }
+        .footer-note {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(15, 118, 110, 0.14);
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 760px) {
+            .quick-strip {
+                grid-template-columns: 1fr;
+            }
+            .hero h1 {
+                font-size: 1.55rem;
+            }
+        }
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.5rem;
             background: rgba(255, 255, 255, 0.55);
@@ -129,7 +192,39 @@ def render_header() -> None:
         f"""
         <div class="hero">
             <h1>{SETTINGS["app_title"]}</h1>
-            <p>一个可直接部署到互联网的 Streamlit MVP，支持数据分析、文件格式转写和图片处理，所有处理结果都可以直接下载。</p>
+            <p>上传文件，在线处理，直接下载结果。适合轻量数据报表、常见文档转写和单张图片处理。</p>
+        </div>
+        <div class="quick-strip">
+            <div class="quick-item"><strong>数据分析</strong><span>CSV / Excel 预览、字段识别、汇总报告</span></div>
+            <div class="quick-item"><strong>格式转写</strong><span>PDF、Word、Excel、TXT 常见转换</span></div>
+            <div class="quick-item"><strong>图片处理</strong><span>尺寸调整、格式转换、压缩质量设置</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_uploaded_file_summary(filename: str, data: bytes) -> None:
+    st.success(f"已上传: {filename}，大小 {human_file_size(len(data))}")
+
+
+def render_result_panel(title: str, filename: str, data: bytes) -> None:
+    st.markdown(
+        f"""
+        <div class="result-panel">
+            <strong>{title}</strong>
+            <span>{filename} · {human_file_size(len(data))}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_footer() -> None:
+    st.markdown(
+        """
+        <div class="footer-note">
+            文件在当前会话内存中处理，不依赖本地固定目录。免费云服务长时间无人访问后可能需要等待冷启动。
         </div>
         """,
         unsafe_allow_html=True,
@@ -207,6 +302,8 @@ def render_analysis_tab() -> None:
         st.info("请先上传一个 CSV 或 Excel 文件。")
         return
 
+    render_uploaded_file_summary(source_name, file_bytes)
+
     try:
         if st.session_state.get("analysis_loaded_signature") != st.session_state.get("analysis_signature"):
             with st.spinner("正在读取数据文件..."):
@@ -271,6 +368,7 @@ def render_analysis_tab() -> None:
     report_bytes = st.session_state.get("analysis_result_bytes")
     report_name = st.session_state.get("analysis_result_name")
     if report_bytes and report_name:
+        render_result_panel("分析报告已准备好", report_name, report_bytes)
         st.download_button(
             "下载 Excel 分析报告",
             data=report_bytes,
@@ -300,6 +398,8 @@ def render_converter_tab() -> None:
     if file_bytes is None or source_name is None:
         st.info("请先上传一个可转换的文件。")
         return
+
+    render_uploaded_file_summary(source_name, file_bytes)
 
     conversion_label = get_conversion_label_for_file(source_name)
     if conversion_label is None:
@@ -337,6 +437,7 @@ def render_converter_tab() -> None:
     result_preview = st.session_state.get("converter_result_preview", "")
 
     if result_bytes and result_name:
+        render_result_panel("转换结果已准备好", result_name, result_bytes)
         result_suffix = Path(result_name).suffix.lower()
         if result_preview and result_suffix in {".txt", ".csv"}:
             st.markdown("**结果预览**")
@@ -376,6 +477,8 @@ def render_image_tab() -> None:
     if file_bytes is None or source_name is None:
         st.info("请先上传一张图片。")
         return
+
+    render_uploaded_file_summary(source_name, file_bytes)
 
     parameter_col1, parameter_col2, parameter_col3 = st.columns(3)
     with parameter_col1:
@@ -442,6 +545,7 @@ def render_image_tab() -> None:
     metadata = st.session_state.get("image_result_metadata", {})
 
     if result_bytes and result_name:
+        render_result_panel("处理后图片已准备好", result_name, result_bytes)
         st.markdown("**处理后预览**")
         st.image(result_bytes, caption=result_name, use_container_width=True)
 
@@ -477,6 +581,8 @@ def main() -> None:
         render_converter_tab()
     with tabs[2]:
         render_image_tab()
+
+    render_footer()
 
 
 if __name__ == "__main__":
