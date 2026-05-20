@@ -3,7 +3,8 @@ headless = true
 runOnSave = true
 enableCORS = true
 enableXsrfProtection = true
-maxUploadSize = 100
+maxUploadSize = 500
+maxMessageSize = 500
 
 [client]
 toolbarMode = "minimal"

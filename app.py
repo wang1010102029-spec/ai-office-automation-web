@@ -29,7 +29,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "default_image_width": 1024,
     "default_image_height": 768,
     "default_image_quality": 85,
-    "max_upload_size_mb": 100,
+    "max_upload_size_mb": 500,
 }
 
 MIME_MAP = {
@@ -207,6 +207,8 @@ def render_header() -> None:
 
 def render_uploaded_file_summary(filename: str, data: bytes) -> None:
     st.success(f"已上传: {filename}，大小 {human_file_size(len(data))}")
+    if len(data) > 100 * 1024 * 1024:
+        st.warning("这是大文件，云端处理可能较慢；如果失败，通常是免费实例内存不足。")
 
 
 def render_result_panel(title: str, filename: str, data: bytes) -> None:

@@ -158,7 +158,7 @@ streamlit run app.py --server.address 0.0.0.0 --server.port $PORT
 - Word 转 TXT 仅支持 `.docx`，不支持老式 `.doc`
 - Excel 支持 `.xls`、`.xlsx`、`.xlsm`，Excel 转 CSV 仅转换第一个工作表
 - 图片处理是单张图片处理
-- 当前 Streamlit 上传上限配置为 100MB，实际可处理大小还会受 Render 免费实例内存限制
+- 当前 Streamlit 上传上限配置为 500MB，但大 Excel 文件会被 pandas 整体读入内存，实际可处理大小仍受 Render 实例内存限制
 - 图片会按目标宽高生成，MVP 使用等比缩放加居中填充，避免拉伸变形
 
 ## 推荐的后续扩展
