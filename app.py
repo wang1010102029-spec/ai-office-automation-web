@@ -23,8 +23,8 @@ SETTINGS_PATH = ROOT_DIR / "config" / "settings.json"
 logger = get_logger(__name__)
 
 DEFAULT_SETTINGS: dict[str, Any] = {
-    "app_name": "AI Office Automation Web",
-    "app_title": "AI Office Automation Web",
+    "app_name": "AI 办公自动化网页",
+    "app_title": "AI 办公自动化网页",
     "max_preview_rows": 20,
     "default_image_width": 1024,
     "default_image_height": 768,
@@ -282,13 +282,13 @@ def render_analysis_tab() -> None:
 
 def render_converter_tab() -> None:
     st.subheader("文件格式转写")
-    st.caption("当前版本支持 PDF 转 TXT、Word 转 TXT、Excel 转 CSV、TXT 转 Word。输出结果可直接下载。")
+    st.caption("当前版本支持 PDF 转 文本、Word 转 文本、Excel 转 CSV、TXT 转 Word 文档。输出结果可直接下载。")
 
     uploaded_file = st.file_uploader(
         "选择待转写文件",
         type=["pdf", "docx", "xlsx", "xlsm", "txt"],
         key="converter_upload",
-        help="PDF、Word(.docx)、Excel(.xlsx/.xlsm)、TXT。",
+        help="PDF、Word 文档（.docx）、Excel 文件（.xlsx/.xlsm）、TXT 文本。",
     )
 
     file_bytes, source_name = sync_uploaded_file(
@@ -306,7 +306,7 @@ def render_converter_tab() -> None:
         st.error("当前文件类型不在 MVP 支持范围内。")
         return
 
-    st.write(f"识别到的转换方式: {conversion_label}")
+    st.write(f"识别到的转换方式：{conversion_label}")
     selected_conversion = st.selectbox(
         "转换类型",
         options=[conversion_label],
@@ -358,13 +358,13 @@ def render_converter_tab() -> None:
 
 def render_image_tab() -> None:
     st.subheader("图片处理")
-    st.caption("上传 JPG、PNG 或 WEBP 图片，设置目标宽高、输出格式和压缩质量，生成后可直接预览和下载。")
+    st.caption("上传 JPEG、PNG 或 WEBP 图片，设置目标宽高、输出格式和压缩质量，生成后可直接预览和下载。")
 
     uploaded_file = st.file_uploader(
         "选择图片文件",
         type=["jpg", "jpeg", "png", "webp"],
         key="image_upload",
-        help="支持 JPG、PNG、WEBP。",
+        help="支持 JPEG、PNG、WEBP 格式。",
     )
 
     file_bytes, source_name = sync_uploaded_file(
@@ -395,9 +395,15 @@ def render_image_tab() -> None:
             step=1,
         )
     with parameter_col3:
+        format_label_map = {
+            "JPEG 图片（JPG）": "JPG",
+            "PNG 图片": "PNG",
+            "WEBP 图片": "WEBP",
+        }
+        reverse_format_label_map = {display: value for value, display in format_label_map.items()}
         output_format = st.selectbox(
             "输出格式",
-            options=["JPG", "PNG", "WEBP"],
+            options=list(reverse_format_label_map.keys()),
             index=0,
             key="image_output_format",
         )
@@ -407,7 +413,7 @@ def render_image_tab() -> None:
         min_value=1,
         max_value=100,
         value=int(SETTINGS["default_image_quality"]),
-        help="JPG 和 WEBP 会直接使用该值。PNG 会自动映射为压缩级别。",
+        help="JPEG 和 WEBP 会直接使用该值。PNG 会自动映射为压缩级别。",
     )
 
     st.markdown("**原图预览**")
@@ -421,7 +427,7 @@ def render_image_tab() -> None:
                     source_name=source_name,
                     target_width=int(target_width),
                     target_height=int(target_height),
-                    output_format=output_format,
+                    output_format=reverse_format_label_map[output_format],
                     quality=int(quality),
                 )
             st.session_state["image_result_bytes"] = result_bytes

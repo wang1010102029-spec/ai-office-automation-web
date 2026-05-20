@@ -9,19 +9,19 @@ from pypdf import PdfReader
 from services.file_service import build_timestamped_filename, decode_text, suffix_lower
 
 
-SUPPORTED_CONVERSION_LABELS = ("PDF 转 TXT", "Word 转 TXT", "Excel 转 CSV", "TXT 转 Word")
+SUPPORTED_CONVERSION_LABELS = ("PDF 转 文本", "Word 转 文本", "Excel 转 CSV", "TXT 转 Word 文档")
 
 
 def get_conversion_label_for_file(filename: str) -> str | None:
     suffix = suffix_lower(filename)
     if suffix == ".pdf":
-        return "PDF 转 TXT"
+        return "PDF 转 文本"
     if suffix == ".docx":
-        return "Word 转 TXT"
+        return "Word 转 文本"
     if suffix in {".xlsx", ".xlsm"}:
         return "Excel 转 CSV"
     if suffix == ".txt":
-        return "TXT 转 Word"
+        return "TXT 转 Word 文档"
     return None
 
 
@@ -92,12 +92,12 @@ def _convert_txt_to_docx(file_bytes: bytes, source_name: str) -> tuple[bytes, st
 def convert_file(file_bytes: bytes, source_name: str, conversion_label: str) -> tuple[bytes, str]:
     suffix = suffix_lower(source_name)
 
-    if conversion_label == "PDF 转 TXT":
+    if conversion_label == "PDF 转 文本":
         if suffix != ".pdf":
             raise ValueError("所选文件不是 PDF。")
         return _convert_pdf_to_txt(file_bytes, source_name)
 
-    if conversion_label == "Word 转 TXT":
+    if conversion_label == "Word 转 文本":
         if suffix != ".docx":
             raise ValueError("所选文件不是 Word(.docx) 文档。")
         return _convert_docx_to_txt(file_bytes, source_name)
@@ -107,7 +107,7 @@ def convert_file(file_bytes: bytes, source_name: str, conversion_label: str) -> 
             raise ValueError("所选文件不是 Excel(.xlsx/.xlsm) 文件。")
         return _convert_excel_to_csv(file_bytes, source_name)
 
-    if conversion_label == "TXT 转 Word":
+    if conversion_label == "TXT 转 Word 文档":
         if suffix != ".txt":
             raise ValueError("所选文件不是 TXT 文件。")
         return _convert_txt_to_docx(file_bytes, source_name)

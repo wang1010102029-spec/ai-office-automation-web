@@ -5,6 +5,9 @@ enableCORS = true
 enableXsrfProtection = true
 maxUploadSize = 50
 
+[client]
+toolbarMode = "minimal"
+
 [theme]
 base = "light"
 primaryColor = "#0f766e"
