@@ -4,10 +4,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import streamlit as st
 
 from modules.data_analysis import (
     build_analysis_report,
+    get_column_profiles,
     get_numeric_columns,
     get_table_profile,
     load_tabular_dataframe,
@@ -242,6 +244,7 @@ def reset_module_state(prefix: str, extra_keys: tuple[str, ...] = ()) -> None:
         f"{prefix}_loaded_signature",
         f"{prefix}_df",
         f"{prefix}_profile",
+        f"{prefix}_column_profiles",
         f"{prefix}_result_bytes",
         f"{prefix}_result_name",
         f"{prefix}_result_preview",
@@ -286,7 +289,7 @@ def safe_process_error(prefix: str, action: str, exc: Exception) -> None:
 
 def render_analysis_tab() -> None:
     st.subheader("数据分析")
-    st.caption("上传 CSV 或 Excel 文件，默认预览前 20 行，并生成可下载的 Excel 分析报告。")
+    st.caption("上传 CSV 或 Excel 文件，自动识别维度、指标、时间和 ID 字段，并生成可下载的智能分析报告。")
 
     uploaded_file = st.file_uploader(
         "选择数据文件",
@@ -311,8 +314,10 @@ def render_analysis_tab() -> None:
         if st.session_state.get("analysis_loaded_signature") != st.session_state.get("analysis_signature"):
             with st.spinner("正在读取数据文件..."):
                 df = load_tabular_dataframe(file_bytes, source_name)
+                column_profiles = get_column_profiles(df)
             st.session_state["analysis_df"] = df
-            st.session_state["analysis_profile"] = get_table_profile(df)
+            st.session_state["analysis_profile"] = get_table_profile(df, column_profiles)
+            st.session_state["analysis_column_profiles"] = column_profiles
             st.session_state["analysis_loaded_signature"] = st.session_state.get("analysis_signature")
             st.session_state.pop("analysis_report_bytes", None)
             st.session_state.pop("analysis_report_name", None)
@@ -323,57 +328,107 @@ def render_analysis_tab() -> None:
 
     df = st.session_state.get("analysis_df")
     profile = st.session_state.get("analysis_profile")
+    column_profiles = st.session_state.get("analysis_column_profiles", [])
     if df is None or profile is None:
         st.warning("文件尚未成功解析。")
         return
 
-    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
     metric_col1.metric("行数", profile["row_count"])
     metric_col2.metric("列数", profile["column_count"])
-    metric_col3.metric("数值字段", len(profile["numeric_columns"]))
+    metric_col3.metric("维度字段", len(profile.get("dimension_columns", [])))
+    metric_col4.metric("指标字段", len(profile.get("metric_columns", profile["numeric_columns"])))
 
     st.markdown("**基础信息**")
     info_col1, info_col2 = st.columns(2)
     with info_col1:
         st.write(f"文件名: {source_name}")
-        st.write("字段名:")
-        st.write(", ".join(profile["columns"]) if profile["columns"] else "无")
+        st.write("字段总数:")
+        st.write(len(profile["columns"]))
     with info_col2:
-        numeric_columns = get_numeric_columns(df)
-        st.write("数值字段:")
-        st.write(", ".join(numeric_columns) if numeric_columns else "无")
+        st.write("自动识别结果:")
+        st.write(
+            f"维度 {len(profile.get('dimension_columns', []))} 个，"
+            f"指标 {len(profile.get('metric_columns', []))} 个，"
+            f"时间 {len(profile.get('date_columns', []))} 个，"
+            f"ID {len(profile.get('id_columns', []))} 个"
+        )
+
+    if column_profiles:
+        st.markdown("**字段智能识别**")
+        st.caption("这里会完整列出字段名、识别角色、缺失率、唯一值数量和样例值，避免下拉框里长字段名看不全。")
+        field_profile_df = pd.DataFrame(column_profiles)
+        st.dataframe(
+            field_profile_df[
+                ["字段名", "识别角色", "识别依据", "数据类型", "缺失率", "唯一值数量", "样例值"]
+            ],
+            use_container_width=True,
+            height=300,
+        )
 
     st.markdown("**数据预览**")
     st.dataframe(df.head(int(SETTINGS["max_preview_rows"])), use_container_width=True, height=360)
 
     st.markdown("**分析参数**")
-    if numeric_columns := get_numeric_columns(df):
-        selected_columns = st.multiselect(
-            "选择一个或多个数值字段进行汇总",
-            options=numeric_columns,
-            default=numeric_columns,
-            key="analysis_selected_columns",
-        )
-    else:
-        selected_columns = []
-        st.info("当前文件没有检测到数值字段，仍可生成概览和字段清单。")
+    dimension_options = list(profile.get("dimension_columns", []))
+    metric_options = list(profile.get("metric_columns", [])) or get_numeric_columns(df)
 
-    if st.button("生成 Excel 分析报告", key="analysis_generate_button", type="primary"):
+    selection_col1, selection_col2 = st.columns(2)
+    with selection_col1:
+        if dimension_options:
+            default_dimensions = dimension_options[: min(3, len(dimension_options))]
+            selected_dimensions = st.multiselect(
+                "选择维度字段，用于分组分析",
+                options=dimension_options,
+                default=default_dimensions,
+                key="analysis_selected_dimensions",
+                help="例如地区、行业、客户类型、月份等。报告会按这些维度生成分布和指标汇总。",
+            )
+        else:
+            selected_dimensions = []
+            st.info("当前文件没有自动识别到适合分组的维度字段。")
+
+    with selection_col2:
+        if metric_options:
+            default_metrics = metric_options[: min(10, len(metric_options))]
+            selected_columns = st.multiselect(
+                "选择指标字段，用于数值统计",
+                options=metric_options,
+                default=default_metrics,
+                key="analysis_selected_columns",
+                help="例如金额、数量、收入、成本、人数等。报告会计算合计、均值、最大值、最小值。",
+            )
+        else:
+            selected_columns = []
+            st.info("当前文件没有检测到可汇总的指标字段，仍可生成字段识别和数据质量报告。")
+
+    if selected_dimensions and selected_columns:
+        st.info("报告会生成：自动洞察、字段智能识别、维度分布、维度指标汇总、缺失值统计。")
+    else:
+        st.warning("未同时选择维度和指标时，报告不会生成完整的交叉汇总。")
+
+    if st.button("生成智能 Excel 分析报告", key="analysis_generate_button", type="primary"):
         try:
-            with st.spinner("正在生成 Excel 分析报告..."):
-                report_bytes, report_name = build_analysis_report(df, selected_columns, source_name)
+            with st.spinner("正在生成智能 Excel 分析报告..."):
+                report_bytes, report_name = build_analysis_report(
+                    df,
+                    selected_columns,
+                    source_name,
+                    selected_dimensions=selected_dimensions,
+                    column_profiles=column_profiles,
+                )
             st.session_state["analysis_result_bytes"] = report_bytes
             st.session_state["analysis_result_name"] = report_name
-            st.success("分析报告已生成。")
+            st.success("智能分析报告已生成。")
         except Exception as exc:
             safe_process_error("数据分析模块", "生成报告", exc)
 
     report_bytes = st.session_state.get("analysis_result_bytes")
     report_name = st.session_state.get("analysis_result_name")
     if report_bytes and report_name:
-        render_result_panel("分析报告已准备好", report_name, report_bytes)
+        render_result_panel("智能分析报告已准备好", report_name, report_bytes)
         st.download_button(
-            "下载 Excel 分析报告",
+            "下载智能 Excel 分析报告",
             data=report_bytes,
             file_name=report_name,
             mime=get_download_mime(report_name),
