@@ -29,7 +29,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "default_image_width": 1024,
     "default_image_height": 768,
     "default_image_quality": 85,
-    "max_upload_size_mb": 50,
+    "max_upload_size_mb": 100,
 }
 
 MIME_MAP = {
@@ -40,6 +40,7 @@ MIME_MAP = {
     ".png": "image/png",
     ".txt": "text/plain; charset=utf-8",
     ".webp": "image/webp",
+    ".xls": "application/vnd.ms-excel",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
@@ -287,9 +288,9 @@ def render_analysis_tab() -> None:
 
     uploaded_file = st.file_uploader(
         "选择数据文件",
-        type=["csv", "xlsx", "xlsm"],
+        type=["csv", "xls", "xlsx", "xlsm"],
         key="analysis_upload",
-        help="支持 CSV、XLSX、XLSM。",
+        help="支持 CSV、XLS、XLSX、XLSM。",
     )
 
     file_bytes, source_name = sync_uploaded_file(
@@ -384,9 +385,9 @@ def render_converter_tab() -> None:
 
     uploaded_file = st.file_uploader(
         "选择待转写文件",
-        type=["pdf", "docx", "xlsx", "xlsm", "txt"],
+        type=["pdf", "docx", "xls", "xlsx", "xlsm", "txt"],
         key="converter_upload",
-        help="PDF、Word 文档（.docx）、Excel 文件（.xlsx/.xlsm）、TXT 文本。",
+        help="PDF、Word 文档（.docx）、Excel 文件（.xls/.xlsx/.xlsm）、TXT 文本。",
     )
 
     file_bytes, source_name = sync_uploaded_file(

@@ -5,5 +5,5 @@
   "default_image_width": 1024,
   "default_image_height": 768,
   "default_image_quality": 85,
-  "max_upload_size_mb": 50
+  "max_upload_size_mb": 100
 }

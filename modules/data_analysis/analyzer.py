@@ -10,7 +10,7 @@ from services.file_service import build_timestamped_filename, suffix_lower
 
 
 CSV_ENCODINGS = ("utf-8-sig", "utf-8", "gbk", "cp936", "latin-1")
-SUPPORTED_TABULAR_SUFFIXES = {".csv", ".xlsm", ".xlsx"}
+SUPPORTED_TABULAR_SUFFIXES = {".csv", ".xls", ".xlsm", ".xlsx"}
 
 
 def _is_summary_numeric(series: pd.Series) -> bool:
@@ -48,12 +48,13 @@ def _read_csv_with_fallbacks(file_bytes: bytes) -> pd.DataFrame:
 def load_tabular_dataframe(file_bytes: bytes, filename: str) -> pd.DataFrame:
     suffix = suffix_lower(filename)
     if suffix not in SUPPORTED_TABULAR_SUFFIXES:
-        raise ValueError("数据分析模块仅支持 CSV、XLSX、XLSM 文件。")
+        raise ValueError("数据分析模块仅支持 CSV、XLS、XLSX、XLSM 文件。")
 
     if suffix == ".csv":
         return _read_csv_with_fallbacks(file_bytes)
 
-    return pd.read_excel(BytesIO(file_bytes), sheet_name=0, engine="openpyxl")
+    engine = "xlrd" if suffix == ".xls" else "openpyxl"
+    return pd.read_excel(BytesIO(file_bytes), sheet_name=0, engine=engine)
 
 
 def _build_overview_sheet(df: pd.DataFrame, source_name: str, selected_columns: list[str]) -> pd.DataFrame:

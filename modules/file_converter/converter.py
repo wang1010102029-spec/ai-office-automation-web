@@ -18,7 +18,7 @@ def get_conversion_label_for_file(filename: str) -> str | None:
         return "PDF 转 文本"
     if suffix == ".docx":
         return "Word 转 文本"
-    if suffix in {".xlsx", ".xlsm"}:
+    if suffix in {".xls", ".xlsx", ".xlsm"}:
         return "Excel 转 CSV"
     if suffix == ".txt":
         return "TXT 转 Word 文档"
@@ -71,7 +71,9 @@ def _convert_docx_to_txt(file_bytes: bytes, source_name: str) -> tuple[bytes, st
 
 
 def _convert_excel_to_csv(file_bytes: bytes, source_name: str) -> tuple[bytes, str]:
-    dataframe = pd.read_excel(BytesIO(file_bytes), sheet_name=0, engine="openpyxl")
+    suffix = suffix_lower(source_name)
+    engine = "xlrd" if suffix == ".xls" else "openpyxl"
+    dataframe = pd.read_excel(BytesIO(file_bytes), sheet_name=0, engine=engine)
     csv_text = dataframe.to_csv(index=False)
     return csv_text.encode("utf-8-sig"), build_timestamped_filename(source_name, ".csv", prefix="excel_to_csv")
 
@@ -103,8 +105,8 @@ def convert_file(file_bytes: bytes, source_name: str, conversion_label: str) -> 
         return _convert_docx_to_txt(file_bytes, source_name)
 
     if conversion_label == "Excel 转 CSV":
-        if suffix not in {".xlsx", ".xlsm"}:
-            raise ValueError("所选文件不是 Excel(.xlsx/.xlsm) 文件。")
+        if suffix not in {".xls", ".xlsx", ".xlsm"}:
+            raise ValueError("所选文件不是 Excel(.xls/.xlsx/.xlsm) 文件。")
         return _convert_excel_to_csv(file_bytes, source_name)
 
     if conversion_label == "TXT 转 Word 文档":

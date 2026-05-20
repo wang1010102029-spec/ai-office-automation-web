@@ -35,6 +35,7 @@
 - Streamlit
 - pandas
 - openpyxl
+- xlrd
 - python-docx
 - pypdf
 - Pillow
@@ -155,9 +156,9 @@ streamlit run app.py --server.address 0.0.0.0 --server.port $PORT
 
 - PDF 转 TXT 只提取文本层，不做 OCR，所以扫描版 PDF 可能提取不到内容
 - Word 转 TXT 仅支持 `.docx`，不支持老式 `.doc`
-- Excel 转 CSV 仅转换第一个工作表
+- Excel 支持 `.xls`、`.xlsx`、`.xlsm`，Excel 转 CSV 仅转换第一个工作表
 - 图片处理是单张图片处理
-- 上传和文件大小会受 Streamlit Cloud 或 Render 的平台限制
+- 当前 Streamlit 上传上限配置为 100MB，实际可处理大小还会受 Render 免费实例内存限制
 - 图片会按目标宽高生成，MVP 使用等比缩放加居中填充，避免拉伸变形
 
 ## 推荐的后续扩展
