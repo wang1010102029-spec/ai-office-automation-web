@@ -1,0 +1,9 @@
+{
+  "app_name": "AI Office Automation Web",
+  "app_title": "AI Office Automation Web",
+  "max_preview_rows": 20,
+  "default_image_width": 1024,
+  "default_image_height": 768,
+  "default_image_quality": 85,
+  "max_upload_size_mb": 50
+}
